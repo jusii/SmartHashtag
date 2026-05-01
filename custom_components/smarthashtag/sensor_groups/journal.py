@@ -48,7 +48,9 @@ ENTITY_JOURNAL_DESCRIPTIONS = (
         translation_key="last_trip_energy_consumption",
         name="Last trip energy consumption",
         icon="mdi:lightning-bolt",
-        device_class=SensorDeviceClass.ENERGY,
+        # Per-trip totals are not cumulative meters, so we omit
+        # SensorDeviceClass.ENERGY (which requires total/total_increasing).
+        # Plain measurement keeps it graphable without HA warnings.
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="kWh",
     ),
@@ -83,7 +85,7 @@ ENTITY_JOURNAL_DESCRIPTIONS = (
         translation_key="last_trip_regenerated_energy",
         name="Last trip regenerated energy",
         icon="mdi:battery-charging-medium",
-        device_class=SensorDeviceClass.ENERGY,
+        # Per-trip recovery, not a cumulative meter — see note above.
         state_class=SensorStateClass.MEASUREMENT,
         native_unit_of_measurement="kWh",
     ),

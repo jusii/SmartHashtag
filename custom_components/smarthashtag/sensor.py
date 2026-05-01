@@ -22,6 +22,7 @@ from .sensor_groups import (
     ENTITY_BATTERY_DESCRIPTIONS,
     ENTITY_CLIMATE_DESCRIPTIONS,
     ENTITY_GENERAL_DESCRIPTIONS,
+    ENTITY_JOURNAL_DESCRIPTIONS,
     ENTITY_MAINTENANCE_DESCRIPTIONS,
     ENTITY_RUNNING_DESCRIPTIONS,
     ENTITY_SAFETY_DESCRIPTIONS,
@@ -133,6 +134,16 @@ async def async_setup_entry(hass, entry, async_add_devices):
             ),
         )
         for entity_description in ENTITY_SAFETY_DESCRIPTIONS
+    )
+
+    async_add_devices(
+        SmartHashtagJournalSensor(
+            coordinator=coordinator,
+            entity_description=dataclasses.replace(
+                entity_description, key=f"{vehicle}_{entity_description.key}"
+            ),
+        )
+        for entity_description in ENTITY_JOURNAL_DESCRIPTIONS
     )
 
 
@@ -634,6 +645,82 @@ class SmartHashtagSafetySensor(SmartHashtagEntity, SensorEntity):
             if vehicle is None or vehicle.safety is None:
                 return self.entity_description.native_unit_of_measurement
             data = getattr(vehicle.safety, key)
+            if isinstance(data, ValueWithUnit):
+                return data.unit
+        except AttributeError as err:
+            LOGGER.debug(
+                "AttributeError in native_unit_of_measurement: %s (%s)",
+                self.entity_description.key,
+                err,
+            )
+        return self.entity_description.native_unit_of_measurement
+
+
+# Map sensor entity description keys to TripJournal attributes.
+_JOURNAL_KEY_TO_ATTR = {
+    "last_trip_start_address": "start_address",
+    "last_trip_end_address": "end_address",
+    "last_trip_distance": "distance",
+    "last_trip_duration": "duration",
+    "last_trip_energy_consumption": "energy_consumption",
+    "last_trip_avg_energy_consumption": "avg_energy_consumption",
+    "last_trip_avg_speed": "avg_speed",
+    "last_trip_max_speed": "max_speed",
+    "last_trip_regenerated_energy": "regenerated_energy",
+    "last_trip_start_time": "start_time",
+    "last_trip_end_time": "end_time",
+    "total_trips": "total_trips",
+}
+
+
+class SmartHashtagJournalSensor(SmartHashtagEntity, SensorEntity):
+    """Trip-journal sensor: pulls fields off vehicle.last_trip."""
+
+    def __init__(
+        self,
+        coordinator: SmartHashtagDataUpdateCoordinator,
+        entity_description: SensorEntityDescription,
+    ) -> None:
+        """Initialize the sensor class."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{self._attr_unique_id}_{entity_description.key}"
+        self.entity_description = entity_description
+        self._last_valid_value = None
+
+    def _get_attr(self):
+        key = remove_vin_from_key(self.entity_description.key)
+        attr = _JOURNAL_KEY_TO_ATTR.get(key)
+        if attr is None:
+            return None
+        vin = vin_from_key(self.entity_description.key)
+        vehicle = self.coordinator.account.vehicles.get(vin)
+        if vehicle is None or vehicle.last_trip is None:
+            return None
+        return getattr(vehicle.last_trip, attr, None)
+
+    @property
+    def native_value(self):
+        """Return the native value of the sensor."""
+        try:
+            data = self._get_attr()
+            if data is None:
+                return self._last_valid_value
+            if isinstance(data, ValueWithUnit):
+                self._last_valid_value = data.value
+                return data.value
+            self._last_valid_value = data
+            return data
+        except AttributeError as err:
+            LOGGER.error(
+                "AttributeError value: %s (%s)", self.entity_description.key, err
+            )
+            return self._last_valid_value
+
+    @property
+    def native_unit_of_measurement(self):
+        """Return the unit of measurement of the sensor."""
+        try:
+            data = self._get_attr()
             if isinstance(data, ValueWithUnit):
                 return data.unit
         except AttributeError as err:

@@ -496,6 +496,42 @@
       },
       "relative_humidity": {
         "name": "Relative humidity"
+      },
+      "last_trip_start_address": {
+        "name": "Last trip start address"
+      },
+      "last_trip_end_address": {
+        "name": "Last trip end address"
+      },
+      "last_trip_distance": {
+        "name": "Last trip distance"
+      },
+      "last_trip_duration": {
+        "name": "Last trip duration"
+      },
+      "last_trip_energy_consumption": {
+        "name": "Last trip energy consumption"
+      },
+      "last_trip_avg_energy_consumption": {
+        "name": "Last trip avg energy consumption"
+      },
+      "last_trip_avg_speed": {
+        "name": "Last trip avg speed"
+      },
+      "last_trip_max_speed": {
+        "name": "Last trip max speed"
+      },
+      "last_trip_regenerated_energy": {
+        "name": "Last trip regenerated energy"
+      },
+      "last_trip_start_time": {
+        "name": "Last trip start time"
+      },
+      "last_trip_end_time": {
+        "name": "Last trip end time"
+      },
+      "total_trips": {
+        "name": "Total trips"
       }
     }
   }

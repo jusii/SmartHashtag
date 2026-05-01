@@ -496,6 +496,42 @@
       },
       "relative_humidity": {
         "name": "Luftfeuchtigkeit"
+      },
+      "last_trip_start_address": {
+        "name": "Startadresse letzte Fahrt"
+      },
+      "last_trip_end_address": {
+        "name": "Zieladresse letzte Fahrt"
+      },
+      "last_trip_distance": {
+        "name": "Strecke letzte Fahrt"
+      },
+      "last_trip_duration": {
+        "name": "Dauer letzte Fahrt"
+      },
+      "last_trip_energy_consumption": {
+        "name": "Energieverbrauch letzte Fahrt"
+      },
+      "last_trip_avg_energy_consumption": {
+        "name": "Durchschnittsverbrauch letzte Fahrt"
+      },
+      "last_trip_avg_speed": {
+        "name": "Durchschnittsgeschwindigkeit letzte Fahrt"
+      },
+      "last_trip_max_speed": {
+        "name": "Höchstgeschwindigkeit letzte Fahrt"
+      },
+      "last_trip_regenerated_energy": {
+        "name": "Rekuperierte Energie letzte Fahrt"
+      },
+      "last_trip_start_time": {
+        "name": "Startzeit letzte Fahrt"
+      },
+      "last_trip_end_time": {
+        "name": "Endzeit letzte Fahrt"
+      },
+      "total_trips": {
+        "name": "Fahrten gesamt"
       }
     }
   }

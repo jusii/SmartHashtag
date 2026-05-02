@@ -27,6 +27,7 @@ from .sensor_groups import (
     ENTITY_RUNNING_DESCRIPTIONS,
     ENTITY_SAFETY_DESCRIPTIONS,
     ENTITY_TIRE_DESCRIPTIONS,
+    ENTITY_VEHICLE_STATE_DESCRIPTIONS,
 )
 
 
@@ -144,6 +145,16 @@ async def async_setup_entry(hass, entry, async_add_devices):
             ),
         )
         for entity_description in ENTITY_JOURNAL_DESCRIPTIONS
+    )
+
+    async_add_devices(
+        SmartHashtagVehicleStateSensor(
+            coordinator=coordinator,
+            entity_description=dataclasses.replace(
+                entity_description, key=f"{vehicle}_{entity_description.key}"
+            ),
+        )
+        for entity_description in ENTITY_VEHICLE_STATE_DESCRIPTIONS
     )
 
 
@@ -730,3 +741,53 @@ class SmartHashtagJournalSensor(SmartHashtagEntity, SensorEntity):
                 err,
             )
         return self.entity_description.native_unit_of_measurement
+
+
+# Map sensor entity keys (which must be unique HA-wide) to the actual
+# attribute name on VehicleState. Most are 1:1; entries here are renames
+# done to avoid HA unique-ID collisions with sensors backed by other
+# data sources (e.g. running.engine_state vs VehicleState.engine_state).
+_VEHICLE_STATE_KEY_TO_ATTR = {
+    "engine_state_int": "engine_state",
+}
+
+
+class SmartHashtagVehicleStateSensor(SmartHashtagEntity, SensorEntity):
+    """Sensor backed by ``vehicle.state`` (GetCarState endpoint).
+
+    The entity-description's ``key`` (after the VIN prefix is stripped) is
+    used as the attribute name on the ``VehicleState`` dataclass, falling
+    back to ``_VEHICLE_STATE_KEY_TO_ATTR`` to translate any renamed keys.
+    """
+
+    def __init__(
+        self,
+        coordinator: SmartHashtagDataUpdateCoordinator,
+        entity_description: SensorEntityDescription,
+    ) -> None:
+        """Initialize the sensor class."""
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{self._attr_unique_id}_{entity_description.key}"
+        self.entity_description = entity_description
+        self._last_valid_value = None
+
+    @property
+    def native_value(self):
+        """Return the native value of the sensor."""
+        try:
+            key = remove_vin_from_key(self.entity_description.key)
+            attr = _VEHICLE_STATE_KEY_TO_ATTR.get(key, key)
+            vin = vin_from_key(self.entity_description.key)
+            vehicle = self.coordinator.account.vehicles.get(vin)
+            if vehicle is None or vehicle.state is None:
+                return self._last_valid_value
+            data = getattr(vehicle.state, attr, None)
+            if data is None:
+                return self._last_valid_value
+            self._last_valid_value = data
+            return data
+        except AttributeError as err:
+            LOGGER.error(
+                "AttributeError value: %s (%s)", self.entity_description.key, err
+            )
+            return self._last_valid_value

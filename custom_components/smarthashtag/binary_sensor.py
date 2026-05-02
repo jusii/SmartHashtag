@@ -13,6 +13,7 @@ from .const import (
 from .coordinator import SmartHashtagDataUpdateCoordinator
 from .entity import SmartHashtagEntity
 from .sensor import remove_vin_from_key, vin_from_key
+from .sensor_groups import ENTITY_VEHICLE_STATE_BINARY_DESCRIPTIONS
 
 
 @dataclasses.dataclass(frozen=True, kw_only=True)
@@ -192,3 +193,45 @@ async def async_setup_entry(hass, entry, async_add_devices):
         )
         for entity_description in LOCK_ENTITIES
     )
+
+    async_add_devices(
+        SmartHashtagVehicleStateBinarySensor(
+            coordinator=coordinator,
+            entity_description=dataclasses.replace(
+                entity_description, key=f"{vehicle}_{entity_description.key}"
+            ),
+        )
+        for entity_description in ENTITY_VEHICLE_STATE_BINARY_DESCRIPTIONS
+    )
+
+
+class SmartHashtagVehicleStateBinarySensor(SmartHashtagEntity, BinarySensorEntity):
+    """Binary sensor backed by ``vehicle.state`` (GetCarState endpoint).
+
+    The entity-description's ``is_on_fn`` resolves the value off the
+    VehicleState dataclass; vehicle-not-loaded yields ``None`` (HA shows
+    'unavailable') rather than a stale True/False.
+    """
+
+    def __init__(
+        self,
+        coordinator: SmartHashtagDataUpdateCoordinator,
+        entity_description,
+    ) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{self._attr_unique_id}_{entity_description.key}"
+        self.entity_description = entity_description
+
+    @property
+    def is_on(self) -> bool | None:
+        if self.coordinator.account is None:
+            return None
+        try:
+            vin = vin_from_key(self.entity_description.key)
+            key = remove_vin_from_key(self.entity_description.key)
+            vehicle = self.coordinator.account.vehicles.get(vin)
+            if vehicle is None or vehicle.state is None:
+                return None
+            return self.entity_description.is_on_fn(vehicle, key)
+        except (AttributeError, KeyError, TypeError):
+            return None

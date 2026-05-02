@@ -51,6 +51,9 @@
     "switch": {
       "charging_control": {
         "name": "Charging control"
+      },
+      "trip_recording": {
+        "name": "Trip recording"
       }
     },
     "select": {
